@@ -9,7 +9,7 @@ from flask import Flask, request
 preprocessing_function = tf.keras.applications.resnet50.preprocess_input
 
 # ID to class
-id2class = {0: 'donuts', 1: 'falafel', 2: 'french_fries', 3: 'garlic_bread', 4: 'hamburger', 5: 'ice_cream', 6: 'pizza', 7: 'samosa', 8: 'tacos', 9: 'waffles'}
+id2class = {0: 'cheesecake', 1: 'donuts', 2: 'dumplings', 3: 'fried_rice', 4: 'burger', 5: 'omelette', 6: 'pancakes', 7: 'pizza', 8: 'steak', 9: 'tacos'}
 
 # Load model
 print('Loading model...')
@@ -29,6 +29,7 @@ model.load_weights('./weights.h5')
 
 # Preproces image
 def preprocess_image(image_base64):
+    print('Preprocessing image...')
     image = imread(io.BytesIO(base64.b64decode(image_base64)))
     image = tf.image.resize([image], (256, 256))[0].numpy().astype(int)
     image = preprocessing_function(image)
@@ -39,10 +40,10 @@ def infer(image_base64, model):
     image = preprocess_image(image_base64)
     image = np.expand_dims(image, axis=0)
     print('Input shape: ', image.shape)
-    category_id = model.predict(image)[0]
-    category_id = np.argmax(category_id)
+    category_arr = model.predict(image)[0]
+    category_id = np.argmax(category_arr)
     category_name = id2class[category_id]
-    return category_name
+    return category_name, category_arr[category_id]
 
 # Flask app
 app = Flask(__name__)
@@ -56,9 +57,10 @@ def predict():
     image_base64 = request.get_json(force=True)['image']
     if image_base64 is None:
         return {'success': False, 'category': 'NULL'}
-    category = infer(image_base64, model)
 
-    return {'success': True, 'category': category}
+    category, confidence = infer(image_base64, model)
+
+    return {'success': True, 'category': category, 'confidence': str(confidence)}
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=5001, debug=False)
